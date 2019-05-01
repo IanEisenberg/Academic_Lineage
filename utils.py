@@ -6,23 +6,39 @@ Created on Tue Apr 16 22:39:25 2019
 @author: ian
 """
 
-import bokeh
 import glob
-import holoviews as hv
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from os import path
 from wordcloud import WordCloud
 
-def read_hepth_abstract(abstract):
+
+def get_abstract_file(node, source='Data/*'):
+    abstract = glob.glob(path.join(source, '%07d.abs' % node))[0]
+    return abstract
+
+def read_hepth_abstract(abstract, key='abstract'):
     """ read HEP-Th abstract from SNAP
         source: https://snap.stanford.edu/data/cit-HepTh.html
     """
-    f = open(abstract,'r').read()
-    abstract = f.split('\\')[4]
+    out = {}
+    f = open(abstract,'r').read().split('\\')
+    # extra title and authors
+    meta = f[2].split('\n')
+    for line in meta:
+        try:
+            k,*v = line.split(': ')
+            out[k] = ': '.join(v)
+        except ValueError:
+            pass
+    # extract author
+    abstract = f[4]
     abstract = abstract.replace('\n', ' ')
-    return abstract
+    out['Abstract'] = abstract
+    if key:
+        out = out[key]
+    return out
 
 def abstracts_wordcloud(abstracts, ax=None):
     """ take a list of abstract texts and output a wordcloud """ 
@@ -66,8 +82,8 @@ class AncestryGraph():
         """
         lineage = self.get_lineage(node)
         if type(source) == str:
-            citation_abstracts = [glob.glob(path.join(source, '%07d.abs' % i))[0] for i in lineage['citations']]
-            reference_abstracts = [glob.glob(path.join(source, '%07d.abs' % i))[0] for i in lineage['references']]
+            citation_abstracts = [get_abstract_file(i) for i in lineage['citations']]
+            reference_abstracts = [get_abstract_file(i) for i in lineage['references']]
         return {'citations': citation_abstracts, 
                 'references': reference_abstracts}
     
@@ -75,7 +91,8 @@ class AncestryGraph():
         abstracts = self.get_lineage_abstract_files(node, source)
         abstracts = {k: list(map(read_hepth_abstract, v)) for k,v in abstracts.items()}
         return abstracts
-    
+
+
 if __name__ == "__main__":
     edge_list = np.loadtxt('Data/cit-HepTh.txt.gz', dtype=int)
     graph = AncestryGraph()
