@@ -1,14 +1,21 @@
+#!/usr/bin/env python
 import dash
 import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
+from plotly.tools import mpl_to_plotly
 import plotly.graph_objs as go
 from dash.dependencies import Input, Output
 
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 # custom
-from utils import get_abstract_file, read_hepth_abstract
+from utils import (get_abstract_file, 
+                   read_hepth_abstract, 
+                   AncestryGraph)
+from plot_utils import abstracts_wordcloud, fig_to_uri
 
 # style dictionaries
 table_cell_style = {"fontFamily": "Arial",
@@ -18,15 +25,17 @@ table_cell_style = {"fontFamily": "Arial",
                      'overflow': 'hidden',
                      'textOverflow': 'ellipsis'}
 
+# set up temp data
 # other setup
 test_df = pd.DataFrame(np.random.rand(10,4))
-colors = {
-    'background': '#111111',
-    'text': '#7FDBFF'
-}
+edge_list = np.loadtxt('Data/cit-HepTh.txt.gz', dtype=int)
+graph = AncestryGraph()
+graph.load_from_edgelist(edge_list)
 
+
+    
+# set up dashboard
 app = dash.Dash()
-
 app.layout = html.Div(
     [
     # Title - Row
@@ -98,7 +107,7 @@ app.layout = html.Div(
             ]),
             html.Div([
                 dash_table.DataTable(
-                    id='reference-abstracts',
+                    id='reference-graph',
                     columns=[{"name": i, "id": i, 'deletable': True} for i in test_df], 
                     row_selectable="multi",
                     selected_rows=[0],
@@ -108,7 +117,7 @@ app.layout = html.Div(
                 ], className="four columns"),
             html.Div([
                 dash_table.DataTable(
-                    id='citation-abstracts',
+                    id='citation-graph',
                     columns=[{"name": i, "id": i, 'deletable': True} for i in test_df], 
                     row_selectable="multi",
                     selected_rows=[0],
@@ -141,15 +150,15 @@ app.layout = html.Div(
             html.Div(
                 className="four columns",
                 children=html.Div([
-                    dcc.Graph(
-                        id='reference-word-cloud',
+                    html.Img(
+                        id='reference-word-cloud'
                     )
                 ])
             ),
             html.Div(
                 className="four columns",
                 children=html.Div([
-                    dcc.Graph(
+                    html.Img(
                         id='citation-word-cloud',
                     ),
                 ])
@@ -161,6 +170,8 @@ app.layout = html.Div(
 ])
 
 # set up call backs
+
+# update abstract texts
 @app.callback(
     [Output('abstract-div', 'children'),
      Output('title-div', 'children'),
@@ -183,8 +194,21 @@ def update_target_abstract(input_value):
     abstract_data = read_hepth_abstract(get_abstract_file(input_value), None)
     return abstract_data['Abstract'], abstract_data['Title'], abstract_data['Authors']
 
+# update wordclouds
+@app.callback(
+    [Output('citation-word-cloud', 'src'),
+     Output('reference-word-cloud', 'src')],
+    [Input('paper-select', 'value')]
+)
+def update_wordcloud(input_value):
+    abstracts = graph.get_lineage_abstracts(input_value)
+    f_citations = abstracts_wordcloud(abstracts['citations'])
+    citations_url = fig_to_uri(f_citations)
+    f_references = abstracts_wordcloud(abstracts['references'])
+    references_url = fig_to_uri(f_references)
+    return [citations_url, references_url]
 
 
 if __name__ == '__main__':
-    app.run_server(port=8051, debug=True)
+    app.run_server(port=8050, debug=True)
 

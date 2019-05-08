@@ -11,14 +11,13 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from os import path
-from wordcloud import WordCloud
 
 
 def get_abstract_file(node, source='Data/*'):
     abstract = glob.glob(path.join(source, '%07d.abs' % node))[0]
     return abstract
 
-def read_hepth_abstract(abstract, key='abstract'):
+def read_hepth_abstract(abstract, key='Abstract'):
     """ read HEP-Th abstract from SNAP
         source: https://snap.stanford.edu/data/cit-HepTh.html
     """
@@ -39,18 +38,6 @@ def read_hepth_abstract(abstract, key='abstract'):
     if key:
         out = out[key]
     return out
-
-def abstracts_wordcloud(abstracts, ax=None):
-    """ take a list of abstract texts and output a wordcloud """ 
-    wordcloud = WordCloud(max_font_size=50, 
-                           max_words=100, 
-                           background_color="white").generate(' '.join(abstracts))
-    if ax is None:
-        plt.figure(figsize=(12,8));
-        plt.imshow(wordcloud, interpolation="bilinear")
-        plt.axis("off")
-    else:
-        ax.imshow(wordcloud, interpolation="bilinear")
         
 class AncestryGraph():
     """ 
