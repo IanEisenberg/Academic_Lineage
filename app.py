@@ -106,25 +106,25 @@ app.layout = html.Div(
                 )
             ]),
             html.Div([
-                dash_table.DataTable(
-                    id='reference-graph',
-                    columns=[{"name": i, "id": i, 'deletable': True} for i in test_df], 
-                    row_selectable="multi",
-                    selected_rows=[0],
-                    style_cell = table_cell_style,
-                    data=test_df.to_dict("rows")
+                html.H6(
+                    id='reference-header',
+                    style={'textAlign': 'center' }),
+                html.Ul(
+                    id='reference-list',
+                    style={'max-height': '20vh',
+                          'overflow': 'auto'}
                     )
                 ], className="four columns"),
             html.Div([
-                dash_table.DataTable(
-                    id='citation-graph',
-                    columns=[{"name": i, "id": i, 'deletable': True} for i in test_df], 
-                    row_selectable="multi",
-                    selected_rows=[0],
-                    style_cell = table_cell_style,
-                    data=test_df.to_dict("rows")
+                html.H6(
+                    id='citation-header',
+                    style={'textAlign': 'center' }),
+                html.Ul(
+                    id='citation-list',
+                    style={'max-height': '20vh',
+                          'overflow': 'auto'}
                     )
-                ], className="four columns")
+                ], className="four columns"),
 
         ],
         style={'height': "33vh"},
@@ -193,6 +193,24 @@ def update_primary_abstract(input_value):
 def update_target_abstract(input_value):
     abstract_data = read_hepth_abstract(get_abstract_file(input_value), None)
     return abstract_data['Abstract'], abstract_data['Title'], abstract_data['Authors']
+
+# update citaiton/reference lists
+@app.callback(
+    [Output('reference-list', 'children'),
+     Output('citation-list', 'children'),
+     Output('reference-header', 'children'),
+     Output('citation-header', 'children')],
+    [Input('paper-select', 'value')]
+)
+def update_network_lists(input_value):
+    reference_titles = [read_hepth_abstract(i, 'Title') for i in graph.get_lineage_abstract_files(input_value)['references']]
+    citation_titles = [read_hepth_abstract(i, 'Title') for i in graph.get_lineage_abstract_files(input_value)['citations']]
+    reference_titles = [html.Li(x) for x in reference_titles]
+    citation_titles = [html.Li(x) for x in citation_titles]
+    # get headers
+    reference_header = 'References (%s)' % len(reference_titles)
+    citation_header = 'Citations (%s)' % len(citation_titles)
+    return (reference_titles,citation_titles, reference_header, citation_header)
 
 # update wordclouds
 @app.callback(
