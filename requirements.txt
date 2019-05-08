@@ -2,3 +2,8 @@ networkx
 numpy
 pandas
 wordcloud
+scholarly
+colorama
+IPython
+beautifulsoup4
+nltk
