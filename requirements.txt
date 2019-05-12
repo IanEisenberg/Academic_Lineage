@@ -5,3 +5,8 @@ numpy
 pandas
 seaborn
 wordcloud
+scholarly
+colorama
+IPython
+beautifulsoup4
+nltk
