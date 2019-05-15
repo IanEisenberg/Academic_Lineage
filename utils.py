@@ -28,13 +28,13 @@ def read_hepth_abstract(abstract, key='Abstract'):
     for line in meta:
         try:
             k,*v = line.split(': ')
-            out[k] = ': '.join(v)
+            out[k.lower()] = ': '.join(v)
         except ValueError:
             pass
     # extract author
     abstract = f[4]
     abstract = abstract.replace('\n', ' ')
-    out['Abstract'] = abstract
+    out['abstract'] = abstract
     if key:
         out = out[key]
     return out

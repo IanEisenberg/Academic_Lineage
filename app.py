@@ -180,9 +180,9 @@ app.layout = html.Div(
 )
 def update_primary_abstract(input_value):
     abstract_data = read_hepth_abstract(get_abstract_file(input_value), None)
-    return ("Abstract: " + abstract_data['Abstract'], 
-            abstract_data['Title'], 
-            abstract_data['Authors'])
+    return ("Abstract: " + abstract_data['abstract'], 
+            abstract_data['title'], 
+            abstract_data['authors'])
 
 @app.callback(
     [Output('abstract-div2', 'children'),
@@ -192,7 +192,7 @@ def update_primary_abstract(input_value):
 )
 def update_target_abstract(input_value):
     abstract_data = read_hepth_abstract(get_abstract_file(input_value), None)
-    return abstract_data['Abstract'], abstract_data['Title'], abstract_data['Authors']
+    return abstract_data['abstract'], abstract_data['title'], abstract_data['authors']
 
 # update citaiton/reference lists
 @app.callback(
@@ -203,8 +203,8 @@ def update_target_abstract(input_value):
     [Input('paper-select', 'value')]
 )
 def update_network_lists(input_value):
-    reference_titles = [read_hepth_abstract(i, 'Title') for i in graph.get_lineage_abstract_files(input_value)['references']]
-    citation_titles = [read_hepth_abstract(i, 'Title') for i in graph.get_lineage_abstract_files(input_value)['citations']]
+    reference_titles = [read_hepth_abstract(i, 'title') for i in graph.get_lineage_abstract_files(input_value)['references']]
+    citation_titles = [read_hepth_abstract(i, 'title') for i in graph.get_lineage_abstract_files(input_value)['citations']]
     reference_titles = [html.Li(x) for x in reference_titles]
     citation_titles = [html.Li(x) for x in citation_titles]
     # get headers

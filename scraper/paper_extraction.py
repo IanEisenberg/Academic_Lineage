@@ -40,6 +40,7 @@ def paper_output(paper, fetch_abstract=False):
 		"author": paper.bib.get("author"),
 		"meta_url": paper.bib.get("url"),
 		"paper_url": paper.bib.get("eprint"),
+        "abstract": 'NA'
 	}
 
 	try:
