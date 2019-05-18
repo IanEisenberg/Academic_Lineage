@@ -10,3 +10,4 @@ colorama
 IPython
 beautifulsoup4
 nltk
+git+https://github.com/titipata/pubmed_parser
