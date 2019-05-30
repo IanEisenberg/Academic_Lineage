@@ -17,7 +17,7 @@ def get_abstract_file(node, source='Data/*'):
     abstract = glob.glob(path.join(source, '%07d.abs' % node))[0]
     return abstract
 
-def read_hepth_abstract(abstract, key='Abstract'):
+def read_hepth_abstract(abstract, key='abstract'):
     """ read HEP-Th abstract from SNAP
         source: https://snap.stanford.edu/data/cit-HepTh.html
     """

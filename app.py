@@ -1,11 +1,14 @@
+# dynamic controls: https://community.plot.ly/t/dynamic-controls-and-dynamic-output-components/5519
+# chains callbacks: https://community.plot.ly/t/order-of-chained-callbacks-when-app-initialises-or-call-only-some-callbacks-on-start-up/6015
 #!/usr/bin/env python
+import biopython_parser as bp
 import dash
 import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 from plotly.tools import mpl_to_plotly
 import plotly.graph_objs as go
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
 
 import matplotlib.pyplot as plt
@@ -33,14 +36,9 @@ graph = AncestryGraph()
 graph.load_from_edgelist(edge_list)
 
 
-    
-# set up dashboard
-app = dash.Dash()
-app.layout = html.Div(
-    [
-    # Title - Row
-    html.Div(
-        [
+# components
+# Title - Row
+header = html.Div([
             html.H1(
                 'Academic Lineage',
                 style={'font-family': 'Helvetica',
@@ -67,28 +65,49 @@ app.layout = html.Div(
                        "width": "80%"},
                 className='eight columns',
             ),
-        ],
-        className='row'
-    ),
+        ], className='row')
 
-    # selectors
-    html.Div([
-        html.Label('Paper Selection'),
-        dcc.Dropdown(
-            className='four columns',
-            id='paper-select',
-            options=[
-                {'label': 'Paper 1', 'value': 9611127},
-                {'label': 'Paper 2', 'value': 9611126},
-            ],
-            value=9611127,
-        )],
-        className='row'
-    ),
+selectors = html.Div([
+                html.Div([
+                        html.Label('Search Field'),
+                        dcc.Dropdown(
+                                id='field-select',
+                                options=[
+                                        {'label': 'Keywords', 'value': ''},
+                                        {'label': 'Paper Title', 'value': 'title'},
+                                        {'label': 'Paper Author', 'value': 'author'},
+                                        {'label': 'PubMed ID', 'value': 'pmid'}
+                                        ],
+                                value='title',
+                                ),
+                        ], className='two columns'),
+            html.Div([
+                html.Label('Search Query'),
+                dcc.Input(
+                    type='text',
+                    id='paper-select',
+                    value='Regulation of Adipose Tissue Stromal Cells Behaviors by Endogenic Oct4 Expression Control', # 'Enter a paper title or PMID here',
+                    className='twelve columns'
+                ),
+            ], className='two columns'),
+            html.Div([
+                html.Label('Lineage Selector'),
+                dcc.RadioItems(
+                    id='lineage-select',
+                    options=[
+                        {'label': 'Citations', 'value': 'citations'},
+                        {'label': 'References', 'value': 'references'},
+                    ],
+                    value='references',
+                    labelStyle={'display': 'inline-block'})
+                ], className='two columns'),
+            html.Div([
+                html.Label('Number: 0', id='number-label'),
+                ], className='two columns')
+        ], className='row')
 
-    # abstracts
-    html.Div(
-        [
+# paper, references and citations
+main_row = html.Div( [
             html.Div(
                 className="four columns",
                 style={'padding': 15},
@@ -107,32 +126,14 @@ app.layout = html.Div(
             ]),
             html.Div([
                 html.H6(
-                    id='reference-header',
+                    id='lineage-header',
                     style={'textAlign': 'center' }),
-                html.Ul(
-                    id='reference-list',
-                    style={'max-height': '20vh',
+                dcc.RadioItems(
+                    id='lineage-list',
+                    style={'max-height': '30vh',
                           'overflow': 'auto'}
-                    )
+                    ),
                 ], className="four columns"),
-            html.Div([
-                html.H6(
-                    id='citation-header',
-                    style={'textAlign': 'center' }),
-                html.Ul(
-                    id='citation-list',
-                    style={'max-height': '20vh',
-                          'overflow': 'auto'}
-                    )
-                ], className="four columns"),
-
-        ],
-        style={'height': "33vh"},
-        className='row'
-    ),
-    # in-focus abstract and word clouds
-        html.Div(
-        [
             html.Div(
                 className="four columns",
                 children = [
@@ -146,85 +147,124 @@ app.layout = html.Div(
                 html.Div(
                     id='abstract-div2',
                     className='collapsible')
-            ]),
+            ])
+
+        ],
+        style={'height': "33vh"},
+        className='row')
+                
+# set up dashboard
+app = dash.Dash()
+app.layout = html.Div(
+    [
+    header,
+    selectors,
+    main_row,
+    # in-focus abstract and word clouds
+    html.Div(
+        [
             html.Div(
                 className="four columns",
                 children=html.Div([
                     html.Img(
-                        id='reference-word-cloud'
+                        id='word-cloud'
                     )
-                ])
-            ),
-            html.Div(
-                className="four columns",
-                children=html.Div([
-                    html.Img(
-                        id='citation-word-cloud',
-                    ),
                 ])
             )
         ],
         style={'height': "33vh"},
         className='row'
-    )
+    ),
+    # Hidden div inside the app that stores the intermediate value
+    html.Div(id='data_store', style={'display': 'none'}, children = ''),
 ])
 
 # set up call backs
+# update data to be used by rest of the components
+@app.callback(Output('data_store', 'children'),
+              [Input('paper-select', 'n_submit')],
+              [State('paper-select', 'value'),
+              State('field-select', 'value')])
+def update_dash_data(ns1, query, field):
+    if query != 'Enter a paper title or PMID here':
+        return bp.get_dash_data(query, field=field)
+    else:
+        return bp.get_dash_data(None, field=field)
 
-# update abstract texts
+#update abstract texts
 @app.callback(
     [Output('abstract-div', 'children'),
      Output('title-div', 'children'),
      Output('authors-div', 'children')],
-    [Input('paper-select', 'value')]
+    [Input('paper-select', 'n_submit'), 
+    Input('data_store', 'children')]
 )
-def update_primary_abstract(input_value):
-    abstract_data = read_hepth_abstract(get_abstract_file(input_value), None)
-    return ("Abstract: " + abstract_data['abstract'], 
-            abstract_data['title'], 
-            abstract_data['authors'])
+def update_primary_abstract(id, stored_data):
+    if type(stored_data) == str:
+        abstract_data = bp.load_dash_json(stored_data)
+        return ("Abstract: " + abstract_data['abstract'], 
+                abstract_data['title'] + ' (%s)' % abstract_data['date'], 
+                ', '.join(abstract_data['authors']))
+
 
 @app.callback(
-    [Output('abstract-div2', 'children'),
+     [Output('abstract-div2', 'children'),
      Output('title-div2', 'children'),
      Output('authors-div2', 'children')],
-    [Input('paper-select', 'value')]
-)
-def update_target_abstract(input_value):
-    abstract_data = read_hepth_abstract(get_abstract_file(input_value), None)
-    return abstract_data['abstract'], abstract_data['title'], abstract_data['authors']
+     [Input('lineage-list', 'value'),
+      Input('data_store', 'children'),
+      Input('lineage-select', 'value')]
+ )
+def update_target_abstract(PMID, stored_data, selector):
+    stored_data = bp.load_dash_json(stored_data)
+    if stored_data['PMID'] is not None:
+        abstract_data = stored_data['lineage'][selector][PMID]
+        return ("Abstract: " + abstract_data['abstract'], 
+                abstract_data['title'] + ' (%s)' % abstract_data['date'], 
+                ', '.join(abstract_data['authors']))
 
+        
 # update citaiton/reference lists
-@app.callback(
-    [Output('reference-list', 'children'),
-     Output('citation-list', 'children'),
-     Output('reference-header', 'children'),
-     Output('citation-header', 'children')],
-    [Input('paper-select', 'value')]
-)
-def update_network_lists(input_value):
-    reference_titles = [read_hepth_abstract(i, 'title') for i in graph.get_lineage_abstract_files(input_value)['references']]
-    citation_titles = [read_hepth_abstract(i, 'title') for i in graph.get_lineage_abstract_files(input_value)['citations']]
-    reference_titles = [html.Li(x) for x in reference_titles]
-    citation_titles = [html.Li(x) for x in citation_titles]
-    # get headers
-    reference_header = 'References (%s)' % len(reference_titles)
-    citation_header = 'Citations (%s)' % len(citation_titles)
-    return (reference_titles,citation_titles, reference_header, citation_header)
+def get_list_element(x, i):
+    text = '%s (%s)' % (x['title'], x['date'])
+    return text
 
-# update wordclouds
 @app.callback(
-    [Output('citation-word-cloud', 'src'),
-     Output('reference-word-cloud', 'src')],
-    [Input('paper-select', 'value')]
+    [Output('lineage-list', 'options'),
+     Output('number-label', 'children')],
+    [Input('paper-select', 'n_submit'), 
+    Input('data_store', 'children'),
+    Input('lineage-select', 'value')]
 )
-def update_wordcloud(input_value):
-    abstracts = graph.get_lineage_abstracts(input_value)
-    f_citations = abstracts_wordcloud(abstracts['citations'])
-    citations_url = fig_to_uri(f_citations)
-    f_references = abstracts_wordcloud(abstracts['references'])
-    references_url = fig_to_uri(f_references)
-    return [citations_url, references_url]
+def update_network_lists(id, stored_data, selector):
+    stored_data = bp.load_dash_json(stored_data)
+    if stored_data['PMID'] is not None:
+        to_list = list(stored_data['lineage'][selector].values())
+        titles = [get_list_element(x, i) for i,x in enumerate(to_list)]
+        pmids = [x['PMID'] for x in to_list]
+        out = []
+        for i, t in zip(pmids, titles):
+            out.append({'label': t, 'value': i})
+        return (out, 'Number: %s' % len(titles))
+
+
+# # update wordclouds
+@app.callback(
+    [Output('word-cloud', 'src')],
+    [Input('paper-select', 'n_submit'), 
+    Input('data_store', 'children')]
+)
+def update_wordcloud(id, stored_data):
+    stored_data = bp.load_dash_json(stored_data)
+    if stored_data['PMID'] is not None:
+        citation_abs = [i['abstract'] for i in stored_data['lineage']['citations'].values()]
+        reference_abs = [i['abstract'] for i in stored_data['lineage']['references'].values()] 
+        abstracts = citation_abs + reference_abs
+        if abstracts:
+            wordcloud = abstracts_wordcloud(abstracts)
+            return [fig_to_uri(wordcloud)]
+        else:
+            return [None]
 
 
 if __name__ == '__main__':
