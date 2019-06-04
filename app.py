@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+
 # dynamic controls: https://community.plot.ly/t/dynamic-controls-and-dynamic-output-components/5519
 # chains callbacks: https://community.plot.ly/t/order-of-chained-callbacks-when-app-initialises-or-call-only-some-callbacks-on-start-up/6015
 #!/usr/bin/env python
@@ -114,13 +117,13 @@ main_row = html.Div( [
                 children = [
                 # select paper
                 html.H5(
-                    id='title-div',
+                    id='title-primary',
                     style={'textAlign': 'center'}),
                 html.H6(
-                    id='authors-div',
+                    id='authors-primary',
                     style={'textAlign': 'center' }),
                 html.Div(
-                    id='abstract-div',
+                    id='abstract-primary',
                     className='collapsible'
                 )
             ]),
@@ -139,19 +142,45 @@ main_row = html.Div( [
                 children = [
                 # select paper
                 html.H4(
-                    id='title-div2',
+                    id='title-target',
                     style={'textAlign': 'center'}),
                 html.H6(
-                    id='authors-div2',
+                    id='authors-target',
                     style={'textAlign': 'center' }),
                 html.Div(
-                    id='abstract-div2',
+                    id='abstract-target',
                     className='collapsible')
             ])
 
         ],
         style={'height': "33vh"},
         className='row')
+
+# context row
+context_row = html.Div([
+                html.Div(
+                    className="four columns",
+                    children=html.Div([
+                        html.Img(
+                            id='word-cloud')
+                        ])
+                    ),
+                html.Div(
+                className="four columns",
+                children = [
+                # select paper
+                html.H6('Context',
+                    id='context-title',
+                    style={'textAlign': 'center' }),
+                html.Div(
+                    id='context-text',
+                    className='collapsible')
+            ])
+                ],
+                style={'height': "33vh"},
+                className='row'
+            )
+                
                 
 # set up dashboard
 app = dash.Dash()
@@ -160,21 +189,7 @@ app.layout = html.Div(
     header,
     selectors,
     main_row,
-    # in-focus abstract and word clouds
-    html.Div(
-        [
-            html.Div(
-                className="four columns",
-                children=html.Div([
-                    html.Img(
-                        id='word-cloud'
-                    )
-                ])
-            )
-        ],
-        style={'height': "33vh"},
-        className='row'
-    ),
+    context_row,
     # Hidden div inside the app that stores the intermediate value
     html.Div(id='data_store', style={'display': 'none'}, children = ''),
 ])
@@ -193,9 +208,9 @@ def update_dash_data(ns1, query, field):
 
 #update abstract texts
 @app.callback(
-    [Output('abstract-div', 'children'),
-     Output('title-div', 'children'),
-     Output('authors-div', 'children')],
+    [Output('abstract-primary', 'children'),
+     Output('title-primary', 'children'),
+     Output('authors-primary', 'children')],
     [Input('paper-select', 'n_submit'), 
     Input('data_store', 'children')]
 )
@@ -208,9 +223,9 @@ def update_primary_abstract(id, stored_data):
 
 
 @app.callback(
-     [Output('abstract-div2', 'children'),
-     Output('title-div2', 'children'),
-     Output('authors-div2', 'children')],
+     [Output('abstract-target', 'children'),
+     Output('title-target', 'children'),
+     Output('authors-target', 'children')],
      [Input('lineage-list', 'value'),
       Input('data_store', 'children'),
       Input('lineage-select', 'value')]
@@ -218,10 +233,11 @@ def update_primary_abstract(id, stored_data):
 def update_target_abstract(PMID, stored_data, selector):
     stored_data = bp.load_dash_json(stored_data)
     if stored_data['PMID'] is not None:
-        abstract_data = stored_data['lineage'][selector][PMID]
-        return ("Abstract: " + abstract_data['abstract'], 
-                abstract_data['title'] + ' (%s)' % abstract_data['date'], 
-                ', '.join(abstract_data['authors']))
+        if PMID in stored_data['lineage'][selector].keys():
+            abstract_data = stored_data['lineage'][selector][PMID]
+            return ("Abstract: " + abstract_data['abstract'], 
+                    abstract_data['title'] + ' (%s)' % abstract_data['date'], 
+                    ', '.join(abstract_data['authors']))
 
         
 # update citaiton/reference lists
@@ -245,7 +261,7 @@ def update_network_lists(id, stored_data, selector):
         out = []
         for i, t in zip(pmids, titles):
             out.append({'label': t, 'value': i})
-        return (out, 'Number: %s' % len(titles))
+        return (out, 'Number of Papers: %s' % len(titles))
 
 
 # # update wordclouds
@@ -266,6 +282,20 @@ def update_wordcloud(id, stored_data):
         else:
             return [None]
 
+# update context
+@app.callback(
+     [Output('context-text', 'children')],
+     [Input('lineage-list', 'value'),
+      Input('data_store', 'children'),
+      Input('lineage-select', 'value')]
+ )
+def update_context(PMID, stored_data, selector):
+    if selector=='reference':
+        paper = stored_data['paper']
+        paragraph_ids = paper['refs_to_paragraphs'][PMID]
+        paragraph_texts = [paper['paragraph'][i]['text'] for i in paragraph_ids]
+        joined = '\n'.join(paragraph_texts)
+        return [joined]
 
 if __name__ == '__main__':
     app.run_server(port=8050, debug=True)
