@@ -441,6 +441,7 @@ img {
   overflow: hidden;
   line-height: 1.2em;
   max-height: 10vh; 
+  min-height: 5vh;
   display: flex;
   flex-direction: column;
 }
@@ -449,13 +450,7 @@ img {
   background-color: #eee;
   max-height: none;
   white-space: normal;
-  max-width: 40%;
-  position: absolute;
   z-index: 100;
-   box-shadow: 0 0 3pt 2pt #ccc;
-}
-
-.active {
-  overflow: visible;
-  white-space: normal;
+  position: relative;
+  box-shadow: 0 0 3pt 2pt #ccc;
 }
