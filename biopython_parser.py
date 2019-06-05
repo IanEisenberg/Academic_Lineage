@@ -189,6 +189,7 @@ def download_paper(PMCID, get_paragraphs=True):
     if refs is not None:
         refs_dict = {i['ref_id']: (i['pmid_cited'] if i['pmid_cited'] else None) for i in refs}
         paragraphs = pp.parse_pubmed_paragraph(xml)
+        references = pp.parse_pubmed_references(xml)
         ref_to_paragraphs = defaultdict(list)
         for i,paragraph in enumerate(paragraphs):
             if 'reference_ids' in paragraph:
@@ -197,6 +198,7 @@ def download_paper(PMCID, get_paragraphs=True):
                     if ref:
                         ref_to_paragraphs[ref].append(i)
         return {'paragraph': paragraphs,
+                'references': references,
                'refs_to_paragraphs': ref_to_paragraphs}
     else:
         return None

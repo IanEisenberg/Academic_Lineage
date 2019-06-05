@@ -238,6 +238,8 @@ def update_target_abstract(PMID, stored_data, selector):
             return ("Abstract: " + abstract_data['abstract'], 
                     abstract_data['title'] + ' (%s)' % abstract_data['date'], 
                     ', '.join(abstract_data['authors']))
+        else:
+            return ("Abstract: ", '',  '')
 
         
 # update citaiton/reference lists
@@ -290,13 +292,30 @@ def update_wordcloud(id, stored_data):
       Input('lineage-select', 'value')]
  )
 def update_context(PMID, stored_data, selector):
-    if selector=='reference':
+    stored_data = bp.load_dash_json(stored_data)
+    if selector=='references' and PMID is not None:
         paper = stored_data['paper']
+        references = paper['references']
+        reference_id = [i+1 for i,r in enumerate(references) if PMID == r['pmid_cited']]
+        if len(reference_id)>=1:
+            reference_id = reference_id[0]
+        else:
+            reference_id = -1
         paragraph_ids = paper['refs_to_paragraphs'][PMID]
         paragraph_texts = [paper['paragraph'][i]['text'] for i in paragraph_ids]
         joined = '\n'.join(paragraph_texts)
-        return [joined]
+        parts = joined.split('[%s]'%reference_id)
+        to_return = [parts[0]]
+        for i in range(len(parts)-1):
+            to_return.append(html.Span('[%s]' % reference_id, style={'color':'red'}))
+            to_return.append(parts[i])
+        return [to_return]
+#        joined = joined.replace('[%s]' % reference_id, '**[%s]**' % reference_id)
+#        joined = joined.replace('[', '\[').replace(']', '\]')
+#        return [dcc.Markdown(joined)]
+    else:
+        return ['']
 
 if __name__ == '__main__':
-    app.run_server(port=8050, debug=True)
+    app.run_server(port=8051, debug=True)
 
