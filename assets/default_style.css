@@ -437,7 +437,7 @@ img {
   text-align: left;
   outline: none;
   border: #999 solid 1px;
-  border-radius:4px;
+  border-radius:10px;
   overflow: hidden;
   line-height: 1.2em;
   max-height: 10vh; 
@@ -453,4 +453,19 @@ img {
   z-index: 100;
   position: relative;
   box-shadow: 0 0 3pt 2pt #ccc;
+}
+
+.context {
+    background-color: #001628;
+    color: white;
+    border-radius: 10px;
+}
+
+.subcontext {
+    padding: 25px;
+}
+
+.row {
+    padding-left: 50px;
+    padding-right: 50px;
 }

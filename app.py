@@ -62,7 +62,7 @@ header = html.Div([
                 },
             ),
             html.P(
-                'A tool for exploring citation networks around scientific papers',
+                'A tool for exploring the citation context around scientific papers',
                 style={'font-family': 'Helvetica',
                        "font-size": "120%",
                        "width": "80%"},
@@ -106,7 +106,7 @@ selectors = html.Div([
                 ], className='two columns'),
             html.Div([
                 html.Label('Number: 0', id='number-label'),
-                ], className='two columns')
+                ], className='two columns'),
         ], className='row')
 
 # paper, references and citations
@@ -150,7 +150,7 @@ main_row = html.Div( [
                 html.Div(
                     id='abstract-target',
                     className='collapsible')
-            ])
+            ]),
 
         ],
         style={'height': "33vh"},
@@ -166,16 +166,35 @@ context_row = html.Div([
                         ])
                     ),
                 html.Div(
-                className="four columns",
-                children = [
-                # select paper
-                html.H6('Context',
-                    id='context-title',
-                    style={'textAlign': 'center' }),
-                html.Div(
-                    id='context-text',
-                    className='collapsible')
-            ])
+                    className='six columns context',
+                    style={'height': "33vh"},
+                    children=[
+                            html.Div(
+                                className="six columns subcontext",
+                                children = [
+                                html.H6('Context within paper',
+                                    id='context-title',
+                                    style={'textAlign': 'center' }),
+                                html.Div(
+                                    id='context-text',
+                                    className='collapsible')
+                                ]
+                            ),
+                            html.Div(
+                                className="six columns subcontext",
+                                children = [
+                                html.H6('Explore This Paper',
+                                    id='explore-title',
+                                    style={'textAlign': 'center' }),
+                                html.Button(
+                                    "I'm a button",
+                                    id='explore-button'),
+                                html.Button(
+                                    "Link to Paper",
+                                    id='link-button')
+                                ]),
+                        ]
+                    ),
                 ],
                 style={'height': "33vh"},
                 className='row'
@@ -192,7 +211,9 @@ app.layout = html.Div(
     context_row,
     # Hidden div inside the app that stores the intermediate value
     html.Div(id='data_store', style={'display': 'none'}, children = ''),
-])
+    ],
+    style={'backgroundColor':'#fffcef'}
+)
 
 # set up call backs
 # update data to be used by rest of the components
@@ -217,9 +238,12 @@ def update_dash_data(ns1, query, field):
 def update_primary_abstract(id, stored_data):
     if type(stored_data) == str:
         abstract_data = bp.load_dash_json(stored_data)
+        authors = ', '.join(abstract_data['authors'])
+        if len(authors) > 150:
+            authors = authors[:140]+'...'
         return ("Abstract: " + abstract_data['abstract'], 
                 abstract_data['title'] + ' (%s)' % abstract_data['date'], 
-                ', '.join(abstract_data['authors']))
+                authors)
 
 
 @app.callback(
@@ -280,7 +304,7 @@ def update_wordcloud(id, stored_data):
         abstracts = citation_abs + reference_abs
         if abstracts:
             wordcloud = abstracts_wordcloud(abstracts)
-            return [fig_to_uri(wordcloud)]
+            return [fig_to_uri(wordcloud, transparent=True)]
         else:
             return [None]
 
@@ -293,8 +317,8 @@ def update_wordcloud(id, stored_data):
  )
 def update_context(PMID, stored_data, selector):
     stored_data = bp.load_dash_json(stored_data)
-    if selector=='references' and PMID is not None:
-        paper = stored_data['paper']
+    paper = stored_data['paper']
+    if selector=='references' and PMID in paper['refs_to_paragraphs'].keys():
         references = paper['references']
         reference_id = [i+1 for i,r in enumerate(references) if PMID == r['pmid_cited']]
         if len(reference_id)>=1:
@@ -303,6 +327,7 @@ def update_context(PMID, stored_data, selector):
             reference_id = -1
         paragraph_ids = paper['refs_to_paragraphs'][PMID]
         paragraph_texts = [paper['paragraph'][i]['text'] for i in paragraph_ids]
+        paragraph_texts = ['(Par %s) %s' % (paragraph_ids[i],s) for i,s in enumerate(paragraph_texts)]
         joined = '\n'.join(paragraph_texts)
         parts = joined.split('[%s]'%reference_id)
         to_return = [parts[0]]
@@ -310,12 +335,12 @@ def update_context(PMID, stored_data, selector):
             to_return.append(html.Span('[%s]' % reference_id, style={'color':'red'}))
             to_return.append(parts[i])
         return [to_return]
-#        joined = joined.replace('[%s]' % reference_id, '**[%s]**' % reference_id)
-#        joined = joined.replace('[', '\[').replace(']', '\]')
-#        return [dcc.Markdown(joined)]
     else:
         return ['']
 
+# update paper
+        
+    
 if __name__ == '__main__':
     app.run_server(port=8051, debug=True)
 

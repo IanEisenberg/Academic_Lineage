@@ -8,8 +8,8 @@ def abstracts_wordcloud(abstracts, ax=None):
     """ take a list of abstract texts and output a wordcloud """ 
     wordcloud = WordCloud(max_font_size=50, 
                           max_words=100, 
-                          mask=np.zeros((500,500), dtype=int),
-                          background_color="white").generate(' '.join(abstracts))
+                          mask=np.zeros((500,800), dtype=int),
+                          background_color="#fffcef").generate(' '.join(abstracts))
     if ax is None:
         f = plt.figure(figsize=(12,8));
         plt.imshow(wordcloud, interpolation="bilinear")
