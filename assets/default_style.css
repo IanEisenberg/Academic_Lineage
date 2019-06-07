@@ -31,6 +31,7 @@
 .Select {
     z-index: 1002;
 }*/
+html { overflow-y: scroll; }
 
 div {
   max-height: 100%;
@@ -431,24 +432,23 @@ img {
 }
 
 .collapsible {
-  background-color: #eee;
-  color: #444;
+  color: #fffcef;
+  background-color: #800000;
   padding: 18px;
   text-align: left;
   outline: none;
-  border: #999 solid 1px;
+  border: #800000 solid 10px;
   border-radius:10px;
   overflow: hidden;
   line-height: 1.2em;
-  max-height: 10vh; 
-  min-height: 5vh;
+  min-height: 60%;
+  max-height: 60%;
   display: flex;
   flex-direction: column;
 }
 
 .collapsible:hover {
-  background-color: #eee;
-  max-height: none;
+  overflow-y: scroll;
   white-space: normal;
   z-index: 100;
   position: relative;
@@ -456,16 +456,40 @@ img {
 }
 
 .context {
-    background-color: #001628;
+    background-color: #9e9c97;
     color: white;
     border-radius: 10px;
+    height: 100%
+}
+
+.subcontext-pane {
+    border: #eee solid 2px;
 }
 
 .subcontext {
     padding: 25px;
+    height: 100%;
 }
 
+/* row styling */
 .row {
     padding-left: 50px;
     padding-right: 50px;
+}
+
+.banner {
+    color: #fffcef;
+    background-color: #800000;
+    border-radius: 10px;
+    border-style: solid;
+    border-width: 10px;
+    border-color: #800000;
+}
+
+.selectors {
+    padding-top: 50px;
+}
+
+.main {
+    padding-bottom: 15px;
 }

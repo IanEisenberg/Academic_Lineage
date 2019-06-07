@@ -41,7 +41,7 @@ graph.load_from_edgelist(edge_list)
 
 # components
 # Title - Row
-header = html.Div([
+banner = html.Div([
             html.H1(
                 'Academic Lineage',
                 style={'font-family': 'Helvetica',
@@ -68,7 +68,7 @@ header = html.Div([
                        "width": "80%"},
                 className='eight columns',
             ),
-        ], className='row')
+        ], className='row banner')
 
 selectors = html.Div([
                 html.Div([
@@ -107,21 +107,19 @@ selectors = html.Div([
             html.Div([
                 html.Label('Number: 0', id='number-label'),
                 ], className='two columns'),
-        ], className='row')
+        ], className='row selectors')
 
 # paper, references and citations
 main_row = html.Div( [
             html.Div(
-                className="four columns",
+                className="four columns subcontext",
                 style={'padding': 15},
                 children = [
                 # select paper
-                html.H5(
-                    id='title-primary',
-                    style={'textAlign': 'center'}),
-                html.H6(
-                    id='authors-primary',
-                    style={'textAlign': 'center' }),
+                html.P(
+                    'Hover to scroll and read abstract',
+                    id='header-primary',
+                    style={'textAlign': 'center', 'font-weight': "bold"}),
                 html.Div(
                     id='abstract-primary',
                     className='collapsible'
@@ -138,23 +136,22 @@ main_row = html.Div( [
                     ),
                 ], className="four columns"),
             html.Div(
-                className="four columns",
+                className="four columns subcontext",
                 children = [
                 # select paper
-                html.H4(
-                    id='title-target',
-                    style={'textAlign': 'center'}),
-                html.H6(
-                    id='authors-target',
-                    style={'textAlign': 'center' }),
+                html.P(
+                    'Hover to scroll and read abstract',
+                    id='header-target',
+                    style={'textAlign': 'center', 'font-weight': "bold"}),
                 html.Div(
                     id='abstract-target',
-                    className='collapsible')
+                    className='collapsible'
+                )
             ]),
 
         ],
         style={'height': "33vh"},
-        className='row')
+        className='row main')
 
 # context row
 context_row = html.Div([
@@ -166,18 +163,17 @@ context_row = html.Div([
                         ])
                     ),
                 html.Div(
-                    className='six columns context',
-                    style={'height': "33vh"},
+                    className='eight columns context',
                     children=[
                             html.Div(
                                 className="six columns subcontext",
                                 children = [
-                                html.H6('Context within paper',
+                                html.H4('Context within paper',
                                     id='context-title',
                                     style={'textAlign': 'center' }),
                                 html.Div(
                                     id='context-text',
-                                    className='collapsible')
+                                    className='collapsible subcontext-pane')
                                 ]
                             ),
                             html.Div(
@@ -205,7 +201,7 @@ context_row = html.Div([
 app = dash.Dash()
 app.layout = html.Div(
     [
-    header,
+    banner,
     selectors,
     main_row,
     context_row,
@@ -228,10 +224,25 @@ def update_dash_data(ns1, query, field):
         return bp.get_dash_data(None, field=field)
 
 #update abstract texts
+#@app.callback(
+#    [Output('abstract-primary', 'children'),
+#     Output('title-primary', 'children'),
+#     Output('authors-primary', 'children')],
+#    [Input('paper-select', 'n_submit'), 
+#    Input('data_store', 'children')]
+#)
+#def update_primary_abstract(id, stored_data):
+#    if type(stored_data) == str:
+#        abstract_data = bp.load_dash_json(stored_data)
+#        authors = ', '.join(abstract_data['authors'])
+#        if len(authors) > 150:
+#            authors = authors[:140]+'...'
+#        return ("Abstract: " + abstract_data['abstract'], 
+#                abstract_data['title'] + ' (%s)' % abstract_data['date'], 
+#                authors)
+
 @app.callback(
-    [Output('abstract-primary', 'children'),
-     Output('title-primary', 'children'),
-     Output('authors-primary', 'children')],
+    [Output('abstract-primary', 'children')],
     [Input('paper-select', 'n_submit'), 
     Input('data_store', 'children')]
 )
@@ -241,15 +252,16 @@ def update_primary_abstract(id, stored_data):
         authors = ', '.join(abstract_data['authors'])
         if len(authors) > 150:
             authors = authors[:140]+'...'
-        return ("Abstract: " + abstract_data['abstract'], 
-                abstract_data['title'] + ' (%s)' % abstract_data['date'], 
-                authors)
-
+            
+        to_fill = dcc.Markdown('###### %s (%s) \n ** %s ** \n\n Abstract: %s' % (abstract_data['title'], 
+                                                                        abstract_data['date'],
+                                                                        authors,
+                                                                        abstract_data['abstract']))
+        return (to_fill,)
+    
 
 @app.callback(
-     [Output('abstract-target', 'children'),
-     Output('title-target', 'children'),
-     Output('authors-target', 'children')],
+     [Output('abstract-target', 'children')],
      [Input('lineage-list', 'value'),
       Input('data_store', 'children'),
       Input('lineage-select', 'value')]
@@ -259,12 +271,18 @@ def update_target_abstract(PMID, stored_data, selector):
     if stored_data['PMID'] is not None:
         if PMID in stored_data['lineage'][selector].keys():
             abstract_data = stored_data['lineage'][selector][PMID]
-            return ("Abstract: " + abstract_data['abstract'], 
-                    abstract_data['title'] + ' (%s)' % abstract_data['date'], 
-                    ', '.join(abstract_data['authors']))
+            authors = ', '.join(abstract_data['authors'])
+            if len(authors) > 150:
+                authors = authors[:140]+'...'
+            to_fill = dcc.Markdown('###### %s (%s) \n ** %s ** \n\n Abstract: %s' % (abstract_data['title'], 
+                                                                        abstract_data['date'],
+                                                                        authors,
+                                                                        abstract_data['abstract']))
+            return (to_fill,)
         else:
-            return ("Abstract: ", '',  '')
+            return ('No related paper selected',)
 
+    
         
 # update citaiton/reference lists
 def get_list_element(x, i):
@@ -331,7 +349,7 @@ def update_context(PMID, stored_data, selector):
         joined = '\n'.join(paragraph_texts)
         parts = joined.split('[%s]'%reference_id)
         to_return = [parts[0]]
-        for i in range(len(parts)-1):
+        for i in range(1, len(parts)):
             to_return.append(html.Span('[%s]' % reference_id, style={'color':'red'}))
             to_return.append(parts[i])
         return [to_return]
