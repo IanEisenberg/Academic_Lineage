@@ -10,7 +10,7 @@ def get_empty_info():
            'abstract': '',
            'title': 'Title: ',
            'date': 'No Date',
-           'paper_info': None
+           'paper': None
            }
     return out
 
@@ -73,14 +73,14 @@ def get_lineage_info(lineage_ids, get_paper=False):
 #        f(entry)
         
 
-def get_dash_data(search_query, **kwargs):
+def get_dash_data(search_query, index=0, **kwargs):
     if search_query is None or search_query == '':
-        return json.dumps(get_empty_info())
+        return json.dumps(get_empty_info()), []
     id_list= search(search_query, **kwargs)['IdList']
     if len(id_list)>0:
-        first_id = id_list[0]
+        first_id = id_list[min(index, len(id_list)-1)]
     else:
-        return json.dumps({})
+        return json.dumps({}), []
     abstract_info = get_articles_info([first_id])[0]       
     PMCID = PMID_to_PMCID(first_id)
     paper_info = download_paper(PMCID)
@@ -90,7 +90,7 @@ def get_dash_data(search_query, **kwargs):
     out['paper'] = paper_info
     out['lineage'] = lineage_info
     out['similar'] = get_similar_ids(first_id)
-    return json.dumps(out)
+    return json.dumps(out), id_list
 
 def load_dash_json(dash_json):
     return json.loads(dash_json)
@@ -112,7 +112,7 @@ def search(query, **kwargs):
     kwargs['sort'] = kwargs.get('sort', 'relevance')
     Entrez.email = 'your.email@example.com'
     handle = Entrez.esearch(db='pubmed', 
-                            retmax='20',
+                            retmax='100',
                             retmode='xml', 
                             term=query,
                             **kwargs)
@@ -180,6 +180,8 @@ def PMID_to_PMCID(PMID):
         return None
 
 def download_paper(PMCID, get_paragraphs=True):
+    if PMCID is None:
+        return None
     handle = Entrez.efetch(db="pmc", rettype="full", retmode="xml", id=PMCID)
     xml=handle.read()
     try:

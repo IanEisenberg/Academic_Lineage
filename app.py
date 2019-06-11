@@ -32,12 +32,6 @@ table_cell_style = {"fontFamily": "Arial",
                      'textOverflow': 'ellipsis'}
 
 # set up temp data
-# other setup
-test_df = pd.DataFrame(np.random.rand(10,4))
-edge_list = np.loadtxt('Data/cit-HepTh.txt.gz', dtype=int)
-graph = AncestryGraph()
-graph.load_from_edgelist(edge_list)
-
 
 # components
 # Title - Row
@@ -81,15 +75,25 @@ selectors = html.Div([
                                         {'label': 'Paper Author', 'value': 'author'},
                                         {'label': 'PubMed ID', 'value': 'pmid'}
                                         ],
-                                value='title',
+                                value='',
                                 ),
-                        ], className='two columns'),
+                        ], className='one columns'),
+            html.Div([
+                        html.Label('0 Results', id='index-label'),
+                        dcc.Dropdown(
+                                id='index-select',
+                                options=[
+                                        {'label': '1', 'value': '0'},
+                                        ],
+                                value='0',
+                                ),
+                        ], className='one columns'),
             html.Div([
                 html.Label('Search Query'),
                 dcc.Input(
                     type='text',
                     id='paper-select',
-                    value='Regulation of Adipose Tissue Stromal Cells Behaviors by Endogenic Oct4 Expression Control', # 'Enter a paper title or PMID here',
+                    value='brain PLOS', # 'Enter a paper title or PMID here',
                     className='twelve columns'
                 ),
             ], className='two columns'),
@@ -179,15 +183,21 @@ context_row = html.Div([
                             html.Div(
                                 className="six columns subcontext",
                                 children = [
-                                html.H6('Explore This Paper',
+                                html.H6('Links',
                                     id='explore-title',
                                     style={'textAlign': 'center' }),
-                                html.Button(
-                                    "I'm a button",
-                                    id='explore-button'),
-                                html.Button(
-                                    "Link to Paper",
-                                    id='link-button')
+                                html.A(
+                                    html.Button( "Link to Paper on GScholar"),
+                                    href='https://google.com',
+                                    target="_blank",
+                                    id='link-primary'
+                                    ),
+                                html.A(
+                                    html.Button("Link to Lineage Paper on GScholar"),
+                                    href='https://google.com',
+                                    target="_blank",
+                                    id='link-target'
+                                    )
                                 ]),
                         ]
                     ),
@@ -206,43 +216,35 @@ app.layout = html.Div(
     main_row,
     context_row,
     # Hidden div inside the app that stores the intermediate value
-    html.Div(id='data_store', style={'display': 'none'}, children = ''),
+    html.Div(id='data_store', style={'display': 'none'}, children = bp.get_dash_data(None, index=0, field='')[0])   
     ],
     style={'backgroundColor':'#fffcef'}
 )
 
 # set up call backs
 # update data to be used by rest of the components
-@app.callback(Output('data_store', 'children'),
-              [Input('paper-select', 'n_submit')],
+@app.callback([Output('data_store', 'children'),
+               Output('index-select', 'options'),
+               Output('index-label', 'children')],
+              [Input('paper-select', 'n_submit'),
+               Input('index-select', 'value')],
               [State('paper-select', 'value'),
               State('field-select', 'value')])
-def update_dash_data(ns1, query, field):
-    if query != 'Enter a paper title or PMID here':
-        return bp.get_dash_data(query, field=field)
+def update_dash_data(ns1, index, query, field):
+    index = int(index)
+    if ns1 == 0:
+        data, ids = bp.get_dash_data(None, index=index, field=field)
     else:
-        return bp.get_dash_data(None, field=field)
+        data, ids = bp.get_dash_data(query, index=index, field=field)
+    
+    options = [{'label': str(i+1), 'value': str(i)} for i in range(len(ids))]
+    return (data, options, '%s Results' % str(len(options)))
 
-#update abstract texts
-#@app.callback(
-#    [Output('abstract-primary', 'children'),
-#     Output('title-primary', 'children'),
-#     Output('authors-primary', 'children')],
-#    [Input('paper-select', 'n_submit'), 
-#    Input('data_store', 'children')]
-#)
-#def update_primary_abstract(id, stored_data):
-#    if type(stored_data) == str:
-#        abstract_data = bp.load_dash_json(stored_data)
-#        authors = ', '.join(abstract_data['authors'])
-#        if len(authors) > 150:
-#            authors = authors[:140]+'...'
-#        return ("Abstract: " + abstract_data['abstract'], 
-#                abstract_data['title'] + ' (%s)' % abstract_data['date'], 
-#                authors)
+
 
 @app.callback(
-    [Output('abstract-primary', 'children')],
+    [Output('abstract-primary', 'children'),
+     Output('link-primary', 'href')],
     [Input('paper-select', 'n_submit'), 
     Input('data_store', 'children')]
 )
@@ -257,11 +259,14 @@ def update_primary_abstract(id, stored_data):
                                                                         abstract_data['date'],
                                                                         authors,
                                                                         abstract_data['abstract']))
-        return (to_fill,)
+        url_fill = '+'.join(abstract_data['title'].split(' '))
+        url = 'https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=' + url_fill + '&btnG='
+        return (to_fill, url)
     
 
 @app.callback(
-     [Output('abstract-target', 'children')],
+     [Output('abstract-target', 'children'),
+      Output('link-target', 'href')],
      [Input('lineage-list', 'value'),
       Input('data_store', 'children'),
       Input('lineage-select', 'value')]
@@ -278,9 +283,13 @@ def update_target_abstract(PMID, stored_data, selector):
                                                                         abstract_data['date'],
                                                                         authors,
                                                                         abstract_data['abstract']))
-            return (to_fill,)
+            url_fill = '+'.join(abstract_data['title'].split(' '))
+            url = 'https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=' + url_fill + '&btnG='
+            return (to_fill, url)
         else:
-            return ('No related paper selected',)
+            return ('No related paper selected', 'https://scholar.google.com/')
+    else:
+            return ('No related paper selected', 'https://scholar.google.com/')
 
     
         
@@ -325,6 +334,8 @@ def update_wordcloud(id, stored_data):
             return [fig_to_uri(wordcloud, transparent=True)]
         else:
             return [None]
+    else:
+            return [None]
 
 # update context
 @app.callback(
@@ -336,7 +347,7 @@ def update_wordcloud(id, stored_data):
 def update_context(PMID, stored_data, selector):
     stored_data = bp.load_dash_json(stored_data)
     paper = stored_data['paper']
-    if selector=='references' and PMID in paper['refs_to_paragraphs'].keys():
+    if paper is not None and selector=='references' and PMID in paper['refs_to_paragraphs'].keys():
         references = paper['references']
         reference_id = [i+1 for i,r in enumerate(references) if PMID == r['pmid_cited']]
         if len(reference_id)>=1:
@@ -345,20 +356,18 @@ def update_context(PMID, stored_data, selector):
             reference_id = -1
         paragraph_ids = paper['refs_to_paragraphs'][PMID]
         paragraph_texts = [paper['paragraph'][i]['text'] for i in paragraph_ids]
-        paragraph_texts = ['(Par %s) %s' % (paragraph_ids[i],s) for i,s in enumerate(paragraph_texts)]
+        paragraph_texts = ['(Par %s) %s' % (paragraph_ids[i]+1,s) for i,s in enumerate(paragraph_texts)]
         joined = '\n'.join(paragraph_texts)
         parts = joined.split('[%s]'%reference_id)
         to_return = [parts[0]]
         for i in range(1, len(parts)):
-            to_return.append(html.Span('[%s]' % reference_id, style={'color':'red'}))
+            to_return.append(html.Span('[%s]' % reference_id, style={'color':'teal'}))
             to_return.append(parts[i])
         return [to_return]
     else:
         return ['']
 
-# update paper
-        
-    
+ 
 if __name__ == '__main__':
     app.run_server(port=8051, debug=True)
 
